@@ -1,0 +1,34 @@
+from flask import Flask, render_template, request, jsonify
+import os
+from subprocess import PIPE, Popen
+
+app = Flask(__name__)
+
+def readTemp():
+    """get cpu temperature using vcgencmd"""
+    process = Popen(['vcgencmd', 'measure_temp'], stdout=PIPE)
+    output, _error = process.communicate()
+    return float(output[output.index('=') + 1:output.rindex("'")])
+
+# return index page when IP address of RPi is typed in the browser
+@app.route("/")
+def Index():
+    return render_template("index.html", uptime=GetUptime())
+
+# ajax GET call this function periodically to read temperature
+# the state is sent back as json data
+@app.route("/_readTemp")
+def _button():
+    return jsonify(tempState=readTemp())
+
+def GetUptime():
+    # get uptime from the linux terminal command
+    from subprocess import check_output
+    output = check_output(["uptime"])
+    # return only uptime info
+    uptime = output[output.find("up"):output.find("user")-5]
+    return uptime
+
+# run the webserver on standard port 80, requires sudo
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=80, debug=True)
